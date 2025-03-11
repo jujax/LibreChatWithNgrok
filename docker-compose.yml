@@ -18,8 +18,8 @@ services:
       - HOST=0.0.0.0
       - MONGO_URI=mongodb://mongodb:27017/LibreChat
       - MEILI_HOST=http://meilisearch:7700
-      - RAG_PORT=${RAG_PORT:-8000}
-      - RAG_API_URL=http://rag_api:${RAG_PORT:-8000}
+      # - RAG_PORT=${RAG_PORT:-8000}
+      - RAG_API_URL=https://${NGROK_DOMAIN_RAG}
     volumes:
       - type: bind
         source: ./.env
@@ -27,6 +27,22 @@ services:
       - ./images:/app/client/public/images
       - ./uploads:/app/uploads
       - ./logs:/app/api/logs
+      - type: bind
+        source: ./librechat.yaml
+        target: /app/librechat.yaml
+  ngrok-api:
+    container_name: chat-ngrok-api
+    image: ngrok/ngrok:latest
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "4040:4040"
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN_API}
+    command: http --url=${NGROK_DOMAIN_API} api:${PORT}
+    env_file:
+      - .env
   mongodb:
     container_name: chat-mongodb
     image: mongo
@@ -65,6 +81,19 @@ services:
     restart: always
     depends_on:
       - vectordb
+    env_file:
+      - .env
+  ngrok-rag:
+    container_name: chat-ngrok-rag
+    image: ngrok/ngrok:latest
+    restart: always
+    depends_on:
+      - rag_api
+    ports:
+      - "4041:4040"
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN_RAG}
+    command: http --url=${NGROK_DOMAIN_RAG} rag_api:${RAG_PORT:-8000}
     env_file:
       - .env
 
